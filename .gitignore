@@ -8,3 +8,7 @@
 *.cmxs
 *.cmxa
 *~
+*.swp
+_build/
+*.native
+
