@@ -12,10 +12,14 @@ let make_signal n t = {
 
 let print_signal s = s.signal_name ^ ": " ^ s.signal_type
 
-let random_value t = match t with
-  | t_bool -> string_of_bool (Random.bool ())
-  | t_int -> string_of_int (Random.int 10)
-  | t_real -> string_of_float (Random.float 10.0)
+let print_assignment ls r =
+  String.concat ", " (List.map (fun s -> s.signal_name) ls) ^
+  " := " ^ r ^ ";\n"
+
+let random_value t =
+  if t = t_bool then string_of_bool (Random.bool ()) else
+  if t = t_int then string_of_int (Random.int 10) else 
+  if t = t_real then string_of_float (Random.float 10.0) else ""
 
 let random_value_signal t = make_signal (random_value t) t
 
