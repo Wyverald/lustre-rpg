@@ -34,15 +34,11 @@ let print_as_node_decl node name =
   let out_signals = list_mapi
     (fun i t -> make_signal ("o" ^ (string_of_int i)) t) node.node_outputs in
   "node " ^ name ^ "(" ^
-  (String.concat "; " (List.map print_signal in_signals)) ^
-  ") returns (" ^
-  (String.concat "; " (List.map print_signal out_signals)) ^
-  ");\n" ^ 
+  (String.concat "; " (List.map print_signal in_signals)) ^ ") returns (" ^
+  (String.concat "; " (List.map print_signal out_signals)) ^ ")\n" ^
   (if node_num_locals node = 0 then "" else "var " ^ 
-    (String.concat "; " (List.map print_signal node.node_locals)) ^
-    ";\n")
-  ^ "let\n" ^
-  (node.node_print in_signals out_signals) ^ "tel\n"
+    (String.concat "; " (List.map print_signal node.node_locals)) ^ ";\n") ^
+  "let\n" ^ (node.node_print in_signals out_signals) ^ "tel\n"
 
 let shuffle_array arr = (* Knuth shuffle algorithm *)
   for n = Array.length arr - 1 downto 1 do
@@ -145,7 +141,8 @@ let expand_with_appended_primitive primset node =
   let res = find_matching_types node.node_outputs
       (List.map (fun prim -> prim.prim_inputs) primset) in
   if List.length res = 0 then node else
-  let out_indices, prim_index = List.nth res (Random.int (List.length res)) in
+  let out_indices, prim_index = weighted_choose res
+      (List.map (fun prim -> prim.prim_weight) primset) in
   let prim = List.nth primset prim_index in
   make_node node.node_inputs
             (List.append prim.prim_outputs node.node_outputs)
@@ -180,7 +177,8 @@ let expand_with_prepended_primitive primset node =
   let res = find_matching_types node.node_inputs
       (List.map (fun prim -> prim.prim_outputs) primset) in
   if List.length res = 0 then node else
-  let in_indices, prim_index = List.nth res (Random.int (List.length res)) in
+  let in_indices, prim_index = weighted_choose res
+      (List.map (fun prim -> prim.prim_weight) primset) in
   let prim = List.nth primset prim_index in
   let new_locals = list_mapi (fun i t -> make_signal ("l" ^
       (string_of_int (node.node_local_counter + i))) t) prim.prim_outputs in
@@ -229,7 +227,7 @@ let expand_with_pre_and_init node =
               node.node_print (List.append before (new_local :: after)) outs)
 
 (* Take a node and mutate it with one of the functions above. *)
-let mutate_node primset = match Random.float 7.0 with
+let mutate_node primset = match Random.float 10.0 with
   | x when x < 1.0 -> expand_with_shuffle
   | x when x < 3.0 -> expand_with_additional_input
   | x when x < 3.5 -> __fc expand_with_omitted_outputs expand_with_shuffle

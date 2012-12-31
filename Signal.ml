@@ -14,7 +14,7 @@ let print_signal s = s.signal_name ^ ": " ^ s.signal_type
 
 let print_assignment ls r =
   String.concat ", " (List.map (fun s -> s.signal_name) ls) ^
-  " := " ^ r ^ ";\n"
+  " = " ^ r ^ ";\n"
 
 let random_value t =
   if t = t_bool then string_of_bool (Random.bool ()) else

@@ -4,34 +4,25 @@ open Type
 type primitive = {
   prim_inputs : ltype list;
   prim_outputs : ltype list;
+  prim_weight : float;
   prim_print : signal list -> string;
 }
-
-let paren s = "(" ^ s.signal_name ^ ")"
 
 let prim_num_inputs prim = List.length prim.prim_inputs
 let prim_num_outputs prim = List.length prim.prim_outputs
 
-let make_prim inputs outputs print = {
+let make_prim inputs outputs weight print = {
   prim_inputs = inputs;
   prim_outputs = outputs;
+  prim_weight = weight;
   prim_print = print;
 }
 
-let make_prim_binop inputs outputs name = {
-  prim_inputs = inputs;
-  prim_outputs = outputs;
-  prim_print = fun signals -> String.concat (" " ^ name ^ " ")
-                              (List.map paren signals)
-}
+let print_binop name signals = 
+  String.concat (" " ^ name ^ " ") (List.map (fun s -> s.signal_name) signals)
 
-let make_prim_unop inputs outputs name = {
-  prim_inputs = inputs;
-  prim_outputs = outputs;
-  prim_print = fun signals ->
-    name ^ "(" ^ (String.concat ", " (List.map 
-      (fun s -> s.signal_name) signals)) ^ ")"
-}
+let print_unop name signals = name ^ "(" ^ (String.concat ", " (List.map 
+  (fun s -> s.signal_name) signals)) ^ ")"
 
 let print_if_then_else signals =
   let sigarr = Array.of_list signals in
@@ -44,28 +35,44 @@ let print_pre_and_init signals =
   sigarr.(0).signal_name ^ " -> pre(" ^
   sigarr.(1).signal_name ^ ")"
 
+let make_prim_unop i o w p = make_prim i o w (print_unop p)
+let make_prim_binop i o w p = make_prim i o w (print_binop p)
+
 let init_primset = List.flatten [
-  [make_prim_unop [t_bool] [t_bool] "not"];
-  List.map (make_prim_unop [t_int] [t_int]) ["+"; "-"];
-  List.map (make_prim_unop [t_real] [t_real]) ["+"; "-"];
-  [make_prim_unop [t_int] [t_real] "real"];
-  [make_prim_unop [t_real] [t_int] "int"];
-  List.map (make_prim_binop [t_bool; t_bool] [t_bool])
-    ["and"; "or"; "xor"; "="; "<>"; "->"];
-  [make_prim [t_bool; t_bool] [t_bool] print_pre_and_init];
-  List.map (make_prim_binop [t_int; t_int] [t_int])
-    ["+"; "-"; "*"; "/"; "div"; "mod"; "->"];
-  [make_prim [t_int; t_int] [t_int] print_pre_and_init];
-  List.map (make_prim_binop [t_real; t_real] [t_real])
-    ["+"; "-"; "*"; "/"; "div"; "mod"; "->"];
-  [make_prim [t_real; t_real] [t_real] print_pre_and_init];
-  List.map (make_prim_binop [t_int; t_int] [t_bool])
+  (* Unary operators *)
+  [make_prim_unop [t_bool] [t_bool] 0.5 "not";
+   make_prim_unop [t_int] [t_int] 0.05 "+";
+   make_prim_unop [t_int] [t_int] 0.25 "-";
+   make_prim_unop [t_real] [t_real] 0.05 "+";
+   make_prim_unop [t_real] [t_real] 0.25 "-";
+   make_prim_unop [t_int] [t_real] 0.5 "real";
+   make_prim_unop [t_real] [t_int] 0.5 "int"];
+
+  (* Binary operators *)
+  List.map (make_prim_binop [t_bool; t_bool] [t_bool] 0.2)
+    ["and"; "or"; "xor"; "="; "<>"];
+  [make_prim_binop [t_bool; t_bool] [t_bool] 0.5 "->"];
+  [make_prim [t_bool; t_bool] [t_bool] 1.0 print_pre_and_init];
+
+  List.map (make_prim_binop [t_int; t_int] [t_int] 0.2)
+    ["+"; "-"; "*"; "/"; "div"; "mod"];
+  [make_prim_binop [t_int; t_int] [t_int] 0.5 "->"];
+  [make_prim [t_int; t_int] [t_int] 1.0 print_pre_and_init];
+
+  List.map (make_prim_binop [t_real; t_real] [t_real] 0.2)
+    ["+"; "-"; "*"; "/"; "div"; "mod"];
+  [make_prim_binop [t_real; t_real] [t_real] 0.5 "->"];
+  [make_prim [t_real; t_real] [t_real] 1.0 print_pre_and_init];
+
+  List.map (make_prim_binop [t_int; t_int] [t_bool] 0.1)
     ["<"; ">"; "<>"; "="; "<="; ">="];
-  List.map (make_prim_binop [t_real; t_real] [t_bool])
+  List.map (make_prim_binop [t_real; t_real] [t_bool] 0.1)
     ["<"; ">"; "<>"; "="; "<="; ">="];
-  [make_prim [t_bool; t_bool; t_bool] [t_bool] print_if_then_else];
-  [make_prim [t_bool; t_int; t_int] [t_int] print_if_then_else];
-  [make_prim [t_bool; t_real; t_real] [t_real] print_if_then_else];
+
+  (* Ternary operators *)
+  [make_prim [t_bool; t_bool; t_bool] [t_bool] 1.0 print_if_then_else];
+  [make_prim [t_bool; t_int; t_int] [t_int] 1.0 print_if_then_else];
+  [make_prim [t_bool; t_real; t_real] [t_real] 1.0 print_if_then_else];
 ]
 
 let int_range n = Array.to_list (Array.init n (fun x -> x))
@@ -95,4 +102,19 @@ let rec find_matching_types_ have wants i = match wants with
       with Not_found -> rest
 
 let find_matching_types have wants = find_matching_types_ have wants 0
+
+let weighted_choose from weights =
+  (* Assert that |from| is sorted by its snd part. *)
+  let rec zip i from weights = match from with
+    | [] -> []
+    | (xl, xr) :: xs -> if xr = i
+      then ((xl, xr), List.hd weights) :: zip (i + 1) xs (List.tl weights)
+      else zip (i + 1) from (List.tl weights)
+  in let zipped = zip 0 from weights in
+  let sum_of_weights = List.fold_left (fun a b -> a +. snd b) 0.0 zipped in
+  let r = Random.float sum_of_weights in
+  let rec choose r lst = match lst with
+    | (xl, xr) :: [] -> xl
+    | (xl, xr) :: xs -> if r < xr then xl else choose (r -. xr) xs in
+  choose r zipped
 

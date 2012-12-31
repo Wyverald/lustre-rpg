@@ -4,17 +4,18 @@ open Type
 type primitive = {
   prim_inputs : ltype list;
   prim_outputs : ltype list;
+  prim_weight: float;
   prim_print : signal list -> string;
 }
 
 val prim_num_inputs : primitive -> int
 val prim_num_outputs : primitive -> int
 
-val make_prim : ltype list -> ltype list -> (signal list -> string) -> primitive
+val make_prim : ltype list -> ltype list -> float ->
+  (signal list -> string) -> primitive
 
-val make_prim_binop : ltype list -> ltype list -> string -> primitive
-val make_prim_unop : ltype list -> ltype list -> string -> primitive
-
+val print_unop : string -> signal list -> string
+val print_binop : string -> signal list -> string
 val print_if_then_else : signal list -> string
 val print_pre_and_init : signal list -> string
 
@@ -32,4 +33,6 @@ val find_matching_types_ : ltype list -> ltype list list -> int ->
 val find_matching_type_indices : ltype list -> ltype list -> int list
 val find_matching_type_indices_ : (ltype * int) list -> (ltype * int) list ->
   (int * int) list
+
+val weighted_choose : ('a * int) list -> float list -> 'a * int
 
